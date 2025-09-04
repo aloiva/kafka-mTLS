@@ -1,9 +1,7 @@
-version: '3'
-  
 services:
   zookeeper:
     image: "confluentinc/cp-zookeeper:${CONF_VER}"
-    container_name: zookeeper
+    container_name: mtls-zookeeper
     ports:
       - 22181:2181
     environment:
@@ -13,14 +11,14 @@ services:
 
   kafka:
     image: "confluentinc/cp-enterprise-kafka:${CONF_VER}"
-    container_name: kafka
+    container_name: mtls-kafka
     depends_on:
       - zookeeper
     ports:
-    # Exposes 9092 for external connections to the broker
-    # Use kafka:29092 for connections internal on the docker network
-    # See https://rmoff.net/2018/08/02/kafka-listeners-explained/ for details
-      - '29092:29092'
+      # Exposes 9092 for external connections to the broker
+      # Use kafka:29092 for connections internal on the docker network
+      # See https://rmoff.net/2018/08/02/kafka-listeners-explained/ for details
+      - "29092:29092"
     environment:
       TZ: ${TZ_IND}
       KAFKA_BROKER_ID: 1
@@ -37,16 +35,16 @@ services:
       KAFKA_SECURITY_INTER_BROKER_PROTOCOL: SSL
       KAFKA_LOG4J_LOGGERS: "kafka.controller=DEBUG,kafka.producer.async.DefaultEventHandler=DEBUG,state.change.logger=INFO"
       KAFKA_AUTHORIZER_CLASS_NAME: kafka.security.authorizer.AclAuthorizer
-      KAFKA_SUPER_USERS: 'User:CN=localhost'
+      KAFKA_SUPER_USERS: "User:CN=localhost"
       AUTO_CREATE_TOPICS: true
       KAFKA_CREATE_TOPICS: "test-topic:1:1"
     volumes:
       - ./secrets/server:/etc/kafka/secrets
 
   producer:
-    build: 
+    build:
       context: ./producer
-    container_name: producer
+    container_name: mtls-producer
     volumes:
       - ./secrets/client:/etc/kafka/secrets
     depends_on:
@@ -55,9 +53,8 @@ services:
   consumer:
     build:
       context: ./consumer
-    container_name: consumer
+    container_name: mtls-consumer
     volumes:
       - ./secrets/client:/etc/kafka/secrets
     depends_on:
       - kafka
-
