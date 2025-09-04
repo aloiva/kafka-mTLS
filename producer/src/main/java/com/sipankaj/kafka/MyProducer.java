@@ -5,34 +5,59 @@ import org.apache.kafka.common.serialization.StringSerializer;
 import java.io.FileInputStream;
 import java.util.Properties;
 
+import com.sun.net.httpserver.HttpServer;
+import com.sun.net.httpserver.HttpHandler;
+import com.sun.net.httpserver.HttpExchange;
+import java.io.IOException;
+import java.io.OutputStream;
+
 public class MyProducer {
 
-    public static void main(String[] args) throws Exception {
+    private static Properties properties;
 
-        // Load the configuration properties
-        Properties properties = new Properties();
-        properties.load(new FileInputStream("/etc/kafka/secrets/producer.properties"));
+    static {
+        try {
+            properties = new Properties();
+            properties.load(new FileInputStream("/etc/kafka/secrets/producer.properties"));
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to load producer properties", e);
+        }
+    }
 
-        // Create the Kafka producer
+    public static String sendToKafka() {
         Producer<String, String> producer = new org.apache.kafka.clients.producer.KafkaProducer<>(properties);
-
-        // Send a message to the Kafka topic
-        ProducerRecord<String, String> record = new ProducerRecord<>("test-topic",null, "Hello, Kafka mTLS!");
+        ProducerRecord<String, String> record = new ProducerRecord<>("test-topic", null, "Hello, Kafka mTLS!");
+        final StringBuilder result = new StringBuilder();
         producer.send(record, new Callback() {
             public void onCompletion(RecordMetadata metadata, Exception exception) {
                 if (exception == null) {
-                    System.out.println("Message sent successfully to Kafka topic " + metadata.topic() +
+                    result.append("Message sent successfully to Kafka topic " + metadata.topic() +
                             " at partition " + metadata.partition() + " and offset " + metadata.offset());
                 } else {
-                    System.out.println("Error sending message to Kafka: " + exception.getMessage());
-                    exception.getStackTrace();
+                    result.append("Error sending message to Kafka: " + exception.getMessage());
                 }
             }
         });
-        System.out.println("Sent Message");
-        // Flush and close the producer
         producer.flush();
         producer.close();
+        return result.length() > 0 ? result.toString() : "Sent Message";
+    }
+
+    public static void main(String[] args) throws Exception {
+        HttpServer server = HttpServer.create(new java.net.InetSocketAddress(8080), 0);
+        server.createContext("/send", new HttpHandler() {
+            @Override
+            public void handle(HttpExchange exchange) throws IOException {
+                String response = sendToKafka();
+                exchange.sendResponseHeaders(200, response.getBytes().length);
+                OutputStream os = exchange.getResponseBody();
+                os.write(response.getBytes());
+                os.close();
+            }
+        });
+        server.setExecutor(null); // creates a default executor
+        System.out.println("HTTP server started on port 8080. Call /send to send message to Kafka.");
+        server.start();
     }
 }
 
