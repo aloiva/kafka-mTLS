@@ -45,3 +45,9 @@ keytool -keystore ./secrets/server/server.truststore.jks -alias CARoot -import -
 
 keytool -list -v -keystore ./secrets/client/client.keystore.jks -storepass $pass
 keytool -list -v -keystore ./secrets/server/server.keystore.jks -storepass $pass
+
+# Convert JKS files to PKCS12 format
+keytool "-J-Dkeystore.pkcs12.integrityAlgorithm=HmacPBESHA1" -importkeystore -srckeystore ./secrets/client/client.keystore.jks -srcstoretype JKS -destkeystore ./secrets/client.keystore.p12 -deststoretype PKCS12 -srcstorepass $pass -deststorepass $pass
+keytool "-J-Dkeystore.pkcs12.integrityAlgorithm=HmacPBESHA1" -importkeystore -srckeystore ./secrets/client/client.truststore.jks -srcstoretype JKS -destkeystore ./secrets/client.truststore.p12 -deststoretype PKCS12 -srcstorepass $pass -deststorepass $pass
+keytool "-J-Dkeystore.pkcs12.integrityAlgorithm=HmacPBESHA1" -importkeystore -srckeystore ./secrets/server/server.keystore.jks -srcstoretype JKS -destkeystore ./secrets/server.keystore.p12 -deststoretype PKCS12 -srcstorepass $pass -deststorepass $pass
+keytool "-J-Dkeystore.pkcs12.integrityAlgorithm=HmacPBESHA1" -importkeystore -srckeystore ./secrets/server/server.truststore.jks -srcstoretype JKS -destkeystore ./secrets/server.truststore.p12 -deststoretype PKCS12 -srcstorepass $pass -deststorepass $pass
